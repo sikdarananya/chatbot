@@ -1,0 +1,59 @@
+pip install huggingface_hub
+pip install transformers
+pip install langchain
+pip install chainlit
+pip install langdetect
+pip install translate
+pip install langdetect translate
+
+
+import os
+from langdetect import detect
+from translate import Translator
+import chainlit as cl
+from langchain import HuggingFaceHub, PromptTemplate, LLMChain
+
+os.environ['API_KEY'] = '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'
+
+
+model_id = 'tiiuae/falcon-7b-instruct'
+
+falcon_llm = HuggingFaceHub(huggingfacehub_api_token=os.environ['API_KEY'],
+                            repo_id=model_id,
+                            model_kwargs={"temperature":0.8,"max_new_tokens":2000})
+
+
+template = """
+
+You are an AI assistant that provides helpful answers to user queries.
+Instruction : Keep the conversation professional and avoid making jokes.
+              Reply in the language that user makes the converstion with.
+
+{user_input}
+
+"""
+prompt = PromptTemplate(template=template, input_variables=['user_input'])
+
+
+def ai_chain(user_input):
+    # Detect user's language
+    user_language = detect(user_input)
+
+    # Translate user input to English (assuming the AI model understands English)
+    translator = Translator(to_lang="en")
+    user_input_english = translator.translate(user_input)
+
+    # Run the LLMChain
+    falcon_chain = LLMChain(llm=falcon_llm, prompt=prompt, verbose=True)
+    ai_response = falcon_chain.run(user_input_english)
+
+    # Translate AI response back to the user's language
+    translator = Translator(to_lang=user_language)
+    ai_response_translated = translator.translate(ai_response)
+
+    return ai_response_translated
+
+# Example usage
+
+response = ai_chain('Quelle est la capitale de la France?')
+print(response)
